@@ -1,32 +1,61 @@
 package main
 
 import (
-	"fmt"
-	"reflect"
-	"strings"
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/riazahmedshah/vfs/internal/config"
+	"github.com/riazahmedshah/vfs/internal/handler"
+	"github.com/riazahmedshah/vfs/internal/repository"
+	"github.com/riazahmedshah/vfs/internal/router"
+	"github.com/riazahmedshah/vfs/internal/server"
+	"github.com/riazahmedshah/vfs/internal/service"
 )
 
-func GetJsonTag(field reflect.StructField) {
-	b, a, found := strings.Cut(field.Tag.Get("json"), ",")
-	fmt.Printf("Field: %-12s | Before comma (b): %-12s | After comma (a): %-10s | Found comma: %v\n", field.Name, b, a, found)
-}
-
-type CreateBookingPayload struct {
-	PropertyID *string  `validate:"required"`
-	TotalPrice *float64 `validate:"required,gt=0"`
-	CheckIn    *string  `validate:"required,datetime=2006-01-02"`
-	CheckOut   *string  `validate:"required,datetime=2006-01-02,gtfield=CheckIn"`
-}
+const DefaultContextTimeout = 30
 
 func main() {
-	fmt.Println("Hello, virtual file server")
-
-	t := reflect.TypeOf(CreateBookingPayload{})
-
-	// 2. Loop through every field in the struct
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		GetJsonTag(field)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		panic("failed to load config" + err.Error())
 	}
 
+	srv, err := server.New(cfg)
+	if err != nil {
+		slog.Error("failed to creat server", "err", err.Error())
+	}
+
+	repos := repository.NewRepositories(srv)
+	services := service.NewServices(srv, repos)
+	handlers := handler.NewHandlers(srv, services)
+
+	r := router.NewRouter(handlers)
+
+	srv.SetupHTTPServer(r)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+
+	go func() {
+		if err := srv.Start(); err != nil && errors.Is(err, http.ErrServerClosed) {
+			slog.Error("failed to start server", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultContextTimeout*time.Second)
+
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("server forced shut down", "err", err)
+		os.Exit(1)
+	}
+	stop()
+	cancel()
+
+	slog.Info("server exited gracefully")
 }
