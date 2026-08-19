@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/vfs/internal/errs"
 	"github.com/riazahmedshah/vfs/internal/lib/utils"
-	"github.com/riazahmedshah/vfs/internal/model/dir"
 	"github.com/riazahmedshah/vfs/internal/model/user"
 	"github.com/riazahmedshah/vfs/internal/repository"
 	"github.com/riazahmedshah/vfs/internal/server"
@@ -68,11 +67,7 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
-
-	var dirPayload dir.CreateDirPayload
-	dirPayload.Name = "root"
-	dirPayload.ParentID = nil
-	_, err = s.dirRepo.CreateDirectory(ctx, tx, newUser.ID.String(), &dirPayload)
+	_, err = s.dirRepo.CreateRootDirectory(ctx, tx, newUser.ID)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
