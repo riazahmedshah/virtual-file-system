@@ -38,10 +38,34 @@ func (u *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, payload *use
 		return nil, fmt.Errorf("failed to execute create user query for email=%s: %w", payload.Email, err)
 	}
 
-	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[user.User])
+	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[user.User])
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect row from table:users for email=%s: %w", payload.Email, err)
 	}
 
-	return &user, err
+	return &userItem, err
+}
+
+func (u *UserRepository) GetUserByEmail(ctx context.Context, email string) (*user.User, error) {
+	stmt := `
+		SELECT 
+			id, username, email, image
+		FROM users
+		WHERE
+			email=@email
+	`
+
+	rows, err := u.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"email": email,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get user by email query email=%s: %w", email, err)
+	}
+
+	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[user.User])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect row from table:users for email=%s: %w", email, err)
+	}
+
+	return &userItem, nil
 }

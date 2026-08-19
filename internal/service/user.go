@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/vfs/internal/errs"
+	"github.com/riazahmedshah/vfs/internal/lib/utils"
 	"github.com/riazahmedshah/vfs/internal/model/dir"
 	"github.com/riazahmedshah/vfs/internal/model/user"
 	"github.com/riazahmedshah/vfs/internal/repository"
@@ -32,35 +35,53 @@ func NewUserService(s *server.Server, userRepo *repository.UserRepository, dirRe
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, token string) (any, error) {
-	identity, err := s.verifier.Verify(ctx, token)
+func (s *UserService) CreateUser(ctx context.Context, googleToken string) (string, error) {
+	identity, err := s.verifier.Verify(ctx, googleToken)
 	if err != nil {
-		return nil, errs.ErrInvalidCredential
+		return "", errs.ErrInvalidCredential
 	}
-	return identity, nil
+
+	existingUser, err := s.userRepo.GetUserByEmail(ctx, identity.Email)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+	if err == nil && existingUser.Email == identity.Email {
+		token, err := utils.GenerateJWT(existingUser.ID, s.server.Config.Auth.JwtSecret)
+		if err != nil {
+			return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+		}
+		return token, nil
+	}
+
 	tx, err := s.server.DB.Pool.Begin(ctx)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
+
 	defer tx.Rollback(ctx)
 
 	var userPayload user.CreateUserpayload
 	userPayload.Username = identity.Name
 	userPayload.Email = identity.Email
 	userPayload.Image = &identity.Picture
-	user, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
+	newUser, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
 	var dirPayload dir.CreateDirPayload
 	dirPayload.Name = "root"
 	dirPayload.ParentID = nil
-	_, err = s.dirRepo.CreateDirectory(ctx, tx, user.ID.String(), &dirPayload)
+	_, err = s.dirRepo.CreateDirectory(ctx, tx, newUser.ID.String(), &dirPayload)
 	if err != nil {
-		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	token, err := utils.GenerateJWT(existingUser.ID, s.server.Config.Auth.JwtSecret)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
 	tx.Commit(ctx)
-	return user, nil
+	return token, nil
 }

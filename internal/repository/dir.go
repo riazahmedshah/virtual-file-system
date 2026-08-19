@@ -46,10 +46,10 @@ func (d *DirRepository) CreateDirectory(ctx context.Context, tx pgx.Tx, userID s
 		return nil, fmt.Errorf("failed to execute create dir query for user_id=%s parent_id=%s : %w", userID, paylaod.ParentID, err)
 	}
 
-	dir, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
+	dirItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
 	if err != nil {
 		return nil, fmt.Errorf("failed to collect row from table:dirs for user_id=%s parent_id=%s %w", userID, paylaod.ParentID, err)
 	}
 
-	return &dir, nil
+	return &dirItem, nil
 }
