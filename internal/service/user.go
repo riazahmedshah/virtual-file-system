@@ -2,12 +2,18 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"net/http"
 
+	"github.com/riazahmedshah/vfs/internal/errs"
+	"github.com/riazahmedshah/vfs/internal/model/dir"
 	"github.com/riazahmedshah/vfs/internal/model/user"
 	"github.com/riazahmedshah/vfs/internal/repository"
 	"github.com/riazahmedshah/vfs/internal/server"
 	"github.com/riazahmedshah/vfs/internal/service/auth"
+)
+
+const (
+	msgCreateUserFailed = "failed to create user"
 )
 
 type UserService struct {
@@ -26,10 +32,35 @@ func NewUserService(s *server.Server, userRepo *repository.UserRepository, dirRe
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, token string) (*user.User, error) {
-	_, err := s.verifier.Verify(ctx, token)
+func (s *UserService) CreateUser(ctx context.Context, token string) (any, error) {
+	identity, err := s.verifier.Verify(ctx, token)
 	if err != nil {
-		return nil, fmt.Errorf("token verification failed: %w", err) // TODO: sentinal err
+		return nil, errs.ErrInvalidCredential
 	}
-	return nil, nil
+	return identity, nil
+	tx, err := s.server.DB.Pool.Begin(ctx)
+	if err != nil {
+		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+	defer tx.Rollback(ctx)
+
+	var userPayload user.CreateUserpayload
+	userPayload.Username = identity.Name
+	userPayload.Email = identity.Email
+	userPayload.Image = &identity.Picture
+	user, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
+	if err != nil {
+		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	var dirPayload dir.CreateDirPayload
+	dirPayload.Name = "root"
+	dirPayload.ParentID = nil
+	_, err = s.dirRepo.CreateDirectory(ctx, tx, user.ID.String(), &dirPayload)
+	if err != nil {
+		return nil, errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	tx.Commit(ctx)
+	return user, nil
 }

@@ -33,8 +33,9 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 				)
 			}
 
-			_ = c.JSON(appErr.Status, map[string]string{
-				"error": appErr.Message,
+			_ = c.JSON(appErr.Status, map[string]any{
+				"success": false,
+				"error":   appErr.Message,
 			})
 			return
 		}
@@ -42,16 +43,18 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 		if echoErr, ok := errors.AsType[*echo.HTTPError](err); ok {
 			slog.Warn("echo HTTP error", "code", echoErr.Code, "msg", echoErr.Message)
 
-			_ = c.JSON(echoErr.Code, map[string]string{
-				"error": fmt.Sprintf("%v", echoErr.Message),
+			_ = c.JSON(echoErr.Code, map[string]any{
+				"success": false,
+				"error":   fmt.Sprintf("%v", echoErr.Message),
 			})
 			return
 		}
 
 		slog.Error("unhandled critical server error", "error", err, "path", c.Path())
 
-		_ = c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "An unexpected server error occurred. Please try again later.",
+		_ = c.JSON(http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"error":   "An unexpected server error occurred. Please try again later.",
 		})
 	}
 }
