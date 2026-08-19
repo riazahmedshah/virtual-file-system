@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/riazahmedshah/vfs/internal/handler"
+	"github.com/riazahmedshah/vfs/internal/middleware"
 	"github.com/riazahmedshah/vfs/internal/validation"
 )
 
@@ -17,6 +18,7 @@ func NewRouter(h *handler.Handlers) *echo.Echo {
 		AllowCredentials: true,
 	}))
 
+	router.HTTPErrorHandler = middleware.ErrMiddleware()
 	router.Validator = validation.NewCustomValidator()
 
 	router.Group("/api/v1")
