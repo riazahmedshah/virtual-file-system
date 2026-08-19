@@ -7,8 +7,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 )
 
 type Config struct {
@@ -26,8 +24,8 @@ type DatabaseConfig struct {
 }
 
 type AuthConfig struct {
-	GoogleOAuth *oauth2.Config
-	JwtSecret   string `validate:"required"`
+	GoogleClientID string `validate:"required"`
+	JwtSecret      string `validate:"required"`
 }
 
 func validateConfig(cnf *Config) error {
@@ -61,16 +59,8 @@ func LoadConfig() (*Config, error) {
 			DatabaseURL: GetENV("DATABASE_URL", ""),
 		},
 		Auth: AuthConfig{
-			GoogleOAuth: &oauth2.Config{
-				ClientID:     GetENV("GOOGLE_CLIENT_ID", ""),
-				ClientSecret: GetENV("GOOGLE_CLIENT_SECRET", ""),
-				RedirectURL:  GetENV("GOOGLE_REDIRECT_URL", ""),
-				Scopes: []string{
-					"https://www.googleapis.com/auth/userinfo.email",
-					"https://www.googleapis.com/auth/userinfo.profile",
-				},
-				Endpoint: google.Endpoint,
-			},
+			GoogleClientID: GetENV("GOOGLE_CLIENT_ID", ""),
+			JwtSecret:      GetENV("JWT_SECRET", ""),
 		},
 	}
 
