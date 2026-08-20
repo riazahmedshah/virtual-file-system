@@ -13,6 +13,7 @@ type Config struct {
 	Server   ServerConfig   `validate:"required"`
 	Database DatabaseConfig `validate:"required"`
 	Auth     AuthConfig     `validate:"required"`
+	GCS      GCSConfig      `validate:"required"`
 }
 
 type ServerConfig struct {
@@ -26,6 +27,11 @@ type DatabaseConfig struct {
 type AuthConfig struct {
 	GoogleClientID string `validate:"required"`
 	JwtSecret      string `validate:"required"`
+}
+
+type GCSConfig struct {
+	GoogleCredentialPath string `validate:"required"`
+	GCSBucketName        string `validate:"required"`
 }
 
 func validateConfig(cnf *Config) error {
@@ -61,6 +67,10 @@ func LoadConfig() (*Config, error) {
 		Auth: AuthConfig{
 			GoogleClientID: GetENV("GOOGLE_CLIENT_ID", ""),
 			JwtSecret:      GetENV("JWT_SECRET", ""),
+		},
+		GCS: GCSConfig{
+			GoogleCredentialPath: GetENV("GOOGLE_APPLICATION_CREDENTIALS", ""),
+			GCSBucketName:        GetENV("GCS_BUCKET_NAME", ""),
 		},
 	}
 

@@ -40,5 +40,7 @@ dist
 tmp
 
 
+# Security
 .env
 .vscode
+vfs-storage-key.json

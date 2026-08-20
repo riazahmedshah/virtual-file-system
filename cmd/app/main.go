@@ -31,7 +31,11 @@ func main() {
 	}
 
 	repos := repository.NewRepositories(srv)
-	services := service.NewServices(srv, repos)
+	services, serviceErr := service.NewServices(srv, repos)
+	if serviceErr != nil {
+		slog.Error("could not create services", "err", err)
+		os.Exit(1)
+	}
 	handlers := handler.NewHandlers(srv, services)
 
 	r := router.NewRouter(handlers)
