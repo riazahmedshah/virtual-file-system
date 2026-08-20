@@ -6,3 +6,7 @@ type CreateFilePayload struct {
 	Name     string    `json:"name" validate:"required"`
 	ParentID uuid.UUID `json:"parentId" validate:"required"`
 }
+
+type UpdateFilePayload struct {
+	Name string `json:"name" validate:"required"`
+}
