@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/vfs/internal/errs"
 	"github.com/riazahmedshah/vfs/internal/model/file"
@@ -21,7 +22,7 @@ func NewFileRepository(s *server.Server) *FileRepository {
 	}
 }
 
-func (r *FileRepository) CreateAndUploadFile(ctx context.Context, userID string, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
+func (r *FileRepository) CreateAndUploadFile(ctx context.Context, userID uuid.UUID, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
 	stmt := `
 		INSERT INTO files (
 			name, parent_id, user_id, gcs_key	

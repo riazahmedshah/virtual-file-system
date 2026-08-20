@@ -38,7 +38,7 @@ func main() {
 	}
 	handlers := handler.NewHandlers(srv, services)
 
-	r := router.NewRouter(handlers)
+	r := router.NewRouter(srv, handlers)
 
 	srv.SetupHTTPServer(r)
 

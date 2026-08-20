@@ -6,10 +6,11 @@ import (
 	"github.com/riazahmedshah/vfs/internal/handler"
 	"github.com/riazahmedshah/vfs/internal/middleware"
 	v1 "github.com/riazahmedshah/vfs/internal/router/v1"
+	"github.com/riazahmedshah/vfs/internal/server"
 	"github.com/riazahmedshah/vfs/internal/validation"
 )
 
-func NewRouter(h *handler.Handlers) *echo.Echo {
+func NewRouter(s *server.Server, h *handler.Handlers) *echo.Echo {
 	router := echo.New()
 
 	router.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
@@ -19,10 +20,11 @@ func NewRouter(h *handler.Handlers) *echo.Echo {
 		AllowCredentials: true,
 	}))
 
+	authMiddleware := middleware.NewAuthMiddleware(s)
 	router.HTTPErrorHandler = middleware.ErrMiddleware()
 	router.Validator = validation.NewCustomValidator()
 
 	v1Group := router.Group("/api/v1")
-	v1.Registerv1Routes(v1Group, h)
+	v1.Registerv1Routes(v1Group, h, authMiddleware)
 	return router
 }

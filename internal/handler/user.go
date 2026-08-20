@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/riazahmedshah/vfs/internal/service"
@@ -28,13 +29,21 @@ func (h *UserHandler) GoogleAuth(c echo.Context) error {
 		slog.Error("failed to bind request payload", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
-	user, err := h.userService.CreateUser(c.Request().Context(), payload.Token)
+	userToken, err := h.userService.CreateUser(c.Request().Context(), payload.Token)
 	if err != nil {
 		return err
 	}
-
+	cookie := new(http.Cookie)
+	cookie.Name = "access_token"
+	cookie.Value = userToken
+	cookie.Expires = time.Now().Add(time.Hour * 24)
+	cookie.HttpOnly = true
+	cookie.Secure = false // Ensures cookie is only sent over HTTPS (Set to false ONLY in local dev if not using HTTPS)
+	cookie.SameSite = http.SameSiteLaxMode
+	cookie.Path = "/"
+	c.SetCookie(cookie)
 	return c.JSON(http.StatusCreated, map[string]any{
 		"success": true,
-		"data":    user,
+		"token":   userToken,
 	})
 }

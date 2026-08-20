@@ -25,7 +25,7 @@ func NewDirRepository(dirRepo *repository.DirRepository) *DirService {
 	}
 }
 
-func (s *DirService) NewDir(ctx context.Context, userID uuid.UUID, payload *dir.CreateDirPayload) (*dir.Dir, error) {
+func (s *DirService) CreateDirectory(ctx context.Context, userID uuid.UUID, payload *dir.CreateDirPayload) (*dir.Dir, error) {
 	directory, err := s.dirRepo.CreateDirectory(ctx, userID, payload)
 	if err != nil {
 		if errors.Is(err, errs.ErrConflictDirName) {

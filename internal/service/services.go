@@ -11,16 +11,17 @@ import (
 
 type Services struct {
 	User *UserService
+	File *FileService
 }
 
 func NewServices(s *server.Server, r *repository.Repositories) (*Services, error) {
-	_, err := gcs.NewGCSClient(s.Config)
+	gcsClient, err := gcs.NewGCSClient(s.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
 	}
 	googleVarifier := google.NewVerifier(s.Config)
 	return &Services{
 		User: NewUserService(s, r.User, r.Dir, googleVarifier),
-		// File: NewFileService(s, r.File, r.Dir, gcsClient)
+		File: NewFileService(s, r.File, gcsClient),
 	}, nil
 }
