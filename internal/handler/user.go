@@ -20,7 +20,7 @@ func NewUserHandler(us *service.UserService) *UserHandler {
 }
 
 type LoginPayload struct {
-	Token string `json:"token"`
+	Token string `json:"token" validate:"required"`
 }
 
 func (h *UserHandler) GoogleAuth(c echo.Context) error {
@@ -28,6 +28,10 @@ func (h *UserHandler) GoogleAuth(c echo.Context) error {
 	if err := c.Bind(&payload); err != nil {
 		slog.Error("failed to bind request payload", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+	}
+
+	if err := c.Validate(payload); err != nil {
+		return err
 	}
 	userToken, err := h.userService.CreateUser(c.Request().Context(), payload.Token)
 	if err != nil {

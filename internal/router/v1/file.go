@@ -9,5 +9,5 @@ import (
 func registerFileRoutes(r *echo.Group, h *handler.Handlers, middleware *middleware.AuthMiddleware) {
 	file := r.Group("/file")
 	file.Use(middleware.RequireAuth())
-	file.POST("/upload/:parentId", h.File.UploadAndCreateFile)
+	file.POST("/upload", h.File.UploadAndCreateFile)
 }

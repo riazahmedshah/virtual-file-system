@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -40,6 +41,9 @@ func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, reader i
 
 	fileItem, err := s.fileRepo.CreateAndUploadFile(ctx, userID, objName, payload)
 	if err != nil {
+		if delErr := s.gcsClient.DeleteFile(ctx, objName); delErr != nil {
+			slog.Error("failed to rollback gcs upload after db failure", "error", delErr, "object", objName)
+		}
 		return nil, errs.New(http.StatusInternalServerError, msgUploadFileFailed, err)
 	}
 

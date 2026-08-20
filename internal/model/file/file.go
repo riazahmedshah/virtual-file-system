@@ -7,8 +7,8 @@ import (
 
 type File struct {
 	model.Base
-	Name     string    `json:"name" db:"name"`
-	ParentID uuid.UUID `json:"parentId" db:"parent_id"`
-	UserID   uuid.UUID `json:"userId" db:"user_id"`
-	GCSKey   string    `json:"gcsKey" db:"gcs_key"`
+	Name   string    `json:"name" db:"name"`
+	DirID  uuid.UUID `json:"dirId" db:"dir_id"`
+	UserID uuid.UUID `json:"userId" db:"user_id"`
+	GCSKey string    `json:"gcsKey" db:"gcs_key"`
 }

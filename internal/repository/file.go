@@ -25,27 +25,27 @@ func NewFileRepository(s *server.Server) *FileRepository {
 func (r *FileRepository) CreateAndUploadFile(ctx context.Context, userID uuid.UUID, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
 	stmt := `
 		INSERT INTO files (
-			name, parent_id, user_id, gcs_key	
+			name, dir_id, user_id, gcs_key	
 		)
 		VALUES (
-			@name, @parent_id, @user_id, @gcs_key
+			@name, @dir_id, @user_id, @gcs_key
 		)
 		RETURNING *
 	`
 
 	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
-		"name":      payload.Name,
-		"parent_id": payload.ParentID,
-		"user_id":   userID,
-		"gcs_key":   gcsKey,
+		"name":    payload.Name,
+		"dir_id":  payload.DirID,
+		"user_id": userID,
+		"gcs_key": gcsKey,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute create file query for user_id=%s parent_id=%s: %w", userID, payload.ParentID, err)
+		return nil, fmt.Errorf("failed to execute create file query for user_id=%s parent_id=%s: %w", userID, payload.DirID, err)
 	}
 
 	fileItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[file.File])
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect file row from files for user_id=%s parent_id=%s: %w", userID, payload.ParentID, err)
+		return nil, fmt.Errorf("failed to collect file row from files for user_id=%s parent_id=%s: %w", userID, payload.DirID, err)
 	}
 
 	return &fileItem, nil

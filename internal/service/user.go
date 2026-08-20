@@ -72,7 +72,7 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
-	token, err := utils.GenerateJWT(existingUser.ID, s.server.Config.Auth.JwtSecret)
+	token, err := utils.GenerateJWT(newUser.ID, s.server.Config.Auth.JwtSecret)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}

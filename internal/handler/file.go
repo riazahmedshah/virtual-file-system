@@ -22,12 +22,13 @@ func NewFileHandler(fs *service.FileService) *FileHandler {
 
 func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 	userID := c.Get("userID").(uuid.UUID)
-	var payload *file.CreateFilePayload
+	var payload file.CreateFilePayload
 	if err := c.Bind(&payload); err != nil {
 		slog.Error("failed to bind request payload", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
 	if err := c.Validate(payload); err != nil {
+		slog.Error("failed to validate request payload", "error", err)
 		return err
 	}
 
@@ -44,6 +45,9 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 	}
 	defer src.Close()
 
-	fileItem, err := h.fileService.UploadFile(c.Request().Context(), userID, src, payload)
+	fileItem, err := h.fileService.UploadFile(c.Request().Context(), userID, src, &payload)
+	if err != nil {
+		return err
+	}
 	return c.JSON(http.StatusCreated, fileItem)
 }
