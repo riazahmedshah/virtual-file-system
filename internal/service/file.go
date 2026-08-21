@@ -32,14 +32,14 @@ func NewFileService(s *server.Server, fileRepo *repository.FileRepository, clien
 	}
 }
 
-func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, reader io.Reader, payload *file.CreateFilePayload) (*file.File, error) {
+func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, dirID uuid.UUID, reader io.Reader, payload *file.CreateFilePayload) (*file.File, error) {
 	randSuffix := uuid.Must(uuid.NewV7())
 	objName := fmt.Sprintf("%s/%s-%s", userID, randSuffix, payload.Name)
 	if err := s.gcsClient.UploadFile(ctx, objName, reader); err != nil {
 		return nil, errs.New(http.StatusInternalServerError, msgUploadFileFailed, err)
 	}
 
-	fileItem, err := s.fileRepo.CreateAndUploadFile(ctx, userID, objName, payload)
+	fileItem, err := s.fileRepo.CreateAndUploadFile(ctx, userID, dirID, objName, payload)
 	if err != nil {
 		if delErr := s.gcsClient.DeleteFile(ctx, objName); delErr != nil {
 			slog.Error("failed to rollback gcs upload after db failure", "error", delErr, "object", objName)

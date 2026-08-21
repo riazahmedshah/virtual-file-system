@@ -21,6 +21,11 @@ func NewFileHandler(fs *service.FileService) *FileHandler {
 }
 
 func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
+	dirID, err := uuid.Parse(c.Param("dirId"))
+	if err != nil {
+		slog.Error("failed to parse dirId from request params", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid dirId")
+	}
 	userID := c.Get("userID").(uuid.UUID)
 	var payload file.CreateFilePayload
 	if err := c.Bind(&payload); err != nil {
@@ -45,7 +50,7 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 	}
 	defer src.Close()
 
-	fileItem, err := h.fileService.UploadFile(c.Request().Context(), userID, src, &payload)
+	fileItem, err := h.fileService.UploadFile(c.Request().Context(), userID, dirID, src, &payload)
 	if err != nil {
 		return err
 	}
