@@ -128,7 +128,7 @@ func (r *FileRepository) DeleteFile(ctx context.Context, userID string, fileID s
 	return nil
 }
 
-func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID string, dirID string) ([]*file.File, error) {
+func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID uuid.UUID, dirID uuid.UUID) ([]*file.File, error) {
 	stmt := `
 		SELECT
 			id, name, parent_id, user_id, gcs_key, created_at, updated_at

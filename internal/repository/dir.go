@@ -87,7 +87,7 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 	return &dirItem, nil
 }
 
-func (r *DirRepository) GetDirectory(ctx context.Context, userID, dirID uuid.UUID) (*dir.Dir, error) {
+func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.Dir, error) {
 	stmt := `
 		SELECT
 			id, name, parent_id, user_id, created_at, updated_at
