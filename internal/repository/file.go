@@ -22,7 +22,7 @@ func NewFileRepository(s *server.Server) *FileRepository {
 	}
 }
 
-func (r *FileRepository) CreateAndUploadFile(ctx context.Context, userID uuid.UUID, dirID uuid.UUID, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
+func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID uuid.UUID, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
 	stmt := `
 		INSERT INTO files (
 			name, dir_id, user_id, gcs_key	
@@ -131,7 +131,7 @@ func (r *FileRepository) DeleteFile(ctx context.Context, userID string, fileID s
 func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID uuid.UUID, dirID uuid.UUID) ([]*file.File, error) {
 	stmt := `
 		SELECT
-			id, name, parent_id, user_id, gcs_key, created_at, updated_at
+			id, name, dir_id, user_id, gcs_key, created_at, updated_at
 		FROM files
 		WHERE dir_id = @dir_id AND user_id = @user_id
 	`
