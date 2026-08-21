@@ -169,7 +169,7 @@ func (r *DirRepository) UpdateDirectory(ctx context.Context, userID, dirID uuid.
 	return &updatedDir, nil
 }
 
-func (r *DirRepository) DeleteDirectory(ctx context.Context, userID, dirID uuid.UUID, payload *dir.UpdateDirpayload) error {
+func (r *DirRepository) DeleteDirectory(ctx context.Context, userID, dirID uuid.UUID) error {
 	stmt := `
 		DELETE FROM dirs
 		WHERE

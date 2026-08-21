@@ -52,9 +52,49 @@ func (h *DirHandler) GetDirectoryContents(c echo.Context) error {
 	}
 	userID := c.Get("userID").(uuid.UUID)
 
-	directoryContents, err := h.dirService.GetDirectoryByID(c.Request().Context(), userID, dirID)
+	directoryContents, err := h.dirService.GetDirectoryContent(c.Request().Context(), userID, dirID)
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, directoryContents)
+}
+
+func (h *DirHandler) UpdateDirectory(c echo.Context) error {
+	dirID, err := uuid.Parse(c.Param("dirId"))
+	if err != nil {
+		slog.Error("failed to parse dirId from request params", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid dirId")
+	}
+	userID := c.Get("userID").(uuid.UUID)
+
+	var payload dir.UpdateDirpayload
+	if err := c.Bind(&payload); err != nil {
+		slog.Error("failed to bind request payload", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+	}
+	if err := c.Validate(payload); err != nil {
+		slog.Error("failed to validate request payload", "error", err)
+		return err
+	}
+
+	updatedDir, err := h.dirService.UpdateDirectory(c.Request().Context(), userID, dirID, &payload)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, updatedDir)
+}
+
+func (h *DirHandler) DeleteDirectory(c echo.Context) error {
+	dirID, err := uuid.Parse(c.Param("dirId"))
+	if err != nil {
+		slog.Error("failed to parse dirId from request params", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid dirId")
+	}
+	userID := c.Get("userID").(uuid.UUID)
+
+	err = h.dirService.DeleteDirectory(c.Request().Context(), userID, dirID)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "directory deleted successfully"})
 }

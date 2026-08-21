@@ -11,4 +11,6 @@ func registerDirRoutes(r *echo.Group, h *handler.Handlers, middleware *middlewar
 	dir.Use(middleware.RequireAuth())
 	dir.GET("/:parentId", h.Dir.GetDirectoryContents)
 	dir.POST("/:parentId", h.Dir.CreateDirectory)
+	dir.PUT("/:dirId", h.Dir.UpdateDirectory)
+	dir.DELETE("/:dirId", h.Dir.DeleteDirectory)
 }
