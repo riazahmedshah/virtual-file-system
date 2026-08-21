@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/riazahmedshah/vfs/internal/errs"
@@ -16,7 +18,10 @@ import (
 )
 
 const (
-	msgUploadFileFailed = "failed to upload file"
+	msgUploadFileFailed   = "failed to upload file"
+	msgDeleteFileFailed   = "failed to delete file"
+	msgGetSignedURLFailed = "failed to load file"
+	msgPermissionDenied   = "user does not have permission to access this file"
 )
 
 type FileService struct {
@@ -49,4 +54,51 @@ func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, dirID uu
 	}
 
 	return fileItem, nil
+}
+
+func (s *FileService) DeleteFile(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) error {
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	if err != nil {
+		return errs.New(http.StatusInternalServerError, msgDeleteFileFailed, err)
+	}
+
+	if err := s.gcsClient.DeleteFile(ctx, fileItem.GCSKey); err != nil {
+		return errs.New(http.StatusInternalServerError, msgDeleteFileFailed, err)
+	}
+
+	if err := s.fileRepo.DeleteFile(ctx, userID.String(), fileID.String()); err != nil {
+		return errs.New(http.StatusInternalServerError, msgDeleteFileFailed, err)
+	}
+
+	return nil
+}
+
+func (s *FileService) GetFileDetailsByID(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) (*file.File, error) {
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	if err != nil {
+		return nil, errs.New(http.StatusInternalServerError, "failed to get file details", err)
+	}
+
+	return fileItem, nil
+}
+
+func (s *FileService) GenerateSignedURL(ctx context.Context, userID uuid.UUID, fileID uuid.UUID, disposition gcs.Disposition, expiry time.Duration) (string, error) {
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	if err != nil {
+		if errors.Is(err, errs.ErrFileNotFound) {
+			return "", err
+		}
+		return "", errs.New(http.StatusInternalServerError, msgGetSignedURLFailed, err)
+	}
+
+	if fileItem.UserID != userID {
+		return "", errs.New(http.StatusForbidden, msgPermissionDenied, nil)
+	}
+	signedURL, err := s.gcsClient.GenerateSignedURL(fileItem.GCSKey, disposition, expiry)
+	if err != nil {
+
+		return "", errs.New(http.StatusInternalServerError, msgGetSignedURLFailed, err)
+	}
+
+	return signedURL, nil
 }

@@ -4,11 +4,19 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/riazahmedshah/vfs/internal/config"
 	"google.golang.org/api/option"
+)
+
+type Disposition string
+
+const (
+	DispositionInline     Disposition = "inline"
+	DispositionAttachment Disposition = "attachment"
 )
 
 type GCSClient struct {
@@ -42,11 +50,14 @@ func (g *GCSClient) UploadFile(ctx context.Context, objectName string, reader io
 	return nil
 }
 
-func (g *GCSClient) GenerateSignedURL(objectName string, expiry time.Duration) (string, error) {
+func (g *GCSClient) GenerateSignedURL(objectName string, disposition Disposition, expiry time.Duration) (string, error) {
 	opts := &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
 		Method:  "GET",
 		Expires: time.Now().Add(expiry),
+		QueryParameters: url.Values{
+			"response-content-disposition": []string{string(disposition)},
+		},
 	}
 
 	url, err := g.client.Bucket(g.cfg.GCS.GCSBucketName).SignedURL(objectName, opts)

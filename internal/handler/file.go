@@ -3,9 +3,11 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/vfs/internal/lib/gcs"
 	"github.com/riazahmedshah/vfs/internal/model/file"
 	"github.com/riazahmedshah/vfs/internal/service"
 )
@@ -55,4 +57,39 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 		return err
 	}
 	return c.JSON(http.StatusCreated, fileItem)
+}
+
+func (h *FileHandler) DeleteFile(c echo.Context) error {
+	fileID, err := uuid.Parse(c.Param("fileId"))
+	if err != nil {
+		slog.Error("failed to parse fileId from request params", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid fileId")
+	}
+	userID := c.Get("userID").(uuid.UUID)
+
+	if err := h.fileService.DeleteFile(c.Request().Context(), userID, fileID); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, map[string]string{"message": "file deleted successfully"})
+}
+
+func (h *FileHandler) Serve(c echo.Context) error {
+	fileID, err := uuid.Parse(c.Param("fileId"))
+	if err != nil {
+		slog.Error("failed to parse fileId from request params", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid fileId")
+	}
+	userID := c.Get("userID").(uuid.UUID)
+
+	disposition := gcs.Disposition(c.QueryParam("disposition"))
+	if disposition == "" {
+		disposition = "inline"
+	}
+
+	signedURL, err := h.fileService.GenerateSignedURL(c.Request().Context(), userID, fileID, disposition, 15*time.Minute)
+	if err != nil {
+		return err
+	}
+
+	return c.Redirect(http.StatusFound, signedURL)
 }
