@@ -8,5 +8,6 @@ import (
 
 func Registerv1Routes(router *echo.Group, h *handler.Handlers, middleware *middleware.AuthMiddleware) {
 	registerUserRoutes(router, h)
+	registerDirRoutes(router, h, middleware)
 	registerFileRoutes(router, h, middleware)
 }

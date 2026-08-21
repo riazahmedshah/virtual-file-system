@@ -55,7 +55,7 @@ func (r *DirRepository) CreateRootDirectory(ctx context.Context, tx pgx.Tx, user
 	return &dirItem, nil
 }
 
-func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, paylaod *dir.CreateDirPayload) (*dir.Dir, error) {
+func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, parentID uuid.UUID, paylaod *dir.CreateDirPayload) (*dir.Dir, error) {
 	stmt := `
 		INSERT INTO dirs (
 			name, user_id, parent_id
@@ -69,19 +69,19 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
 		"name":      paylaod.Name,
 		"user_id":   userID,
-		"parent_id": paylaod.ParentID,
+		"parent_id": parentID,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // Unique key violation
 			return nil, errs.ErrConflictDirName
 		}
-		return nil, fmt.Errorf("failed to execute create dir query for user_id=%s parent_id=%s : %w", userID, paylaod.ParentID, err)
+		return nil, fmt.Errorf("failed to execute create dir query for user_id=%s parent_id=%s : %w", userID, parentID, err)
 	}
 
 	dirItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect row from table:dirs for user_id=%s parent_id=%s %w", userID, paylaod.ParentID, err)
+		return nil, fmt.Errorf("failed to collect row from table:dirs for user_id=%s parent_id=%s %w", userID, parentID, err)
 	}
 
 	return &dirItem, nil
