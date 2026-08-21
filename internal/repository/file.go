@@ -127,3 +127,27 @@ func (r *FileRepository) DeleteFile(ctx context.Context, userID string, fileID s
 
 	return nil
 }
+
+func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID string, dirID string) ([]*file.File, error) {
+	stmt := `
+		SELECT
+			id, name, parent_id, user_id, gcs_key, created_at, updated_at
+		FROM files
+		WHERE dir_id = @dir_id AND user_id = @user_id
+	`
+
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"dir_id":  dirID,
+		"user_id": userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get files by dir id query for user_id=%s dir_id=%s: %w", userID, dirID, err)
+	}
+
+	fileItems, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[file.File])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect file rows from files for user_id=%s dir_id=%s: %w", userID, dirID, err)
+	}
+
+	return fileItems, nil
+}

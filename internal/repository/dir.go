@@ -87,6 +87,55 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 	return &dirItem, nil
 }
 
+func (r *DirRepository) GetDirectory(ctx context.Context, userID, dirID uuid.UUID) (*dir.Dir, error) {
+	stmt := `
+		SELECT
+			id, name, parent_id, user_id, created_at, updated_at
+		FROM dirs
+		WHERE id = @dir_id AND user_id = @user_id
+	`
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"dir_id":  dirID,
+		"user_id": userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get query for id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	dirItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errs.ErrDirNotFound
+		}
+		return nil, fmt.Errorf("failed to collect row from table:dirs for id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	return &dirItem, nil
+}
+
+func (r *DirRepository) GetChildDirectories(ctx context.Context, userID, dirID uuid.UUID) ([]*dir.Dir, error) {
+	stmt := `
+		SELECT
+			id, name, parent_id, user_id, created_at, updated_at
+		FROM dirs
+		WHERE parent_id = @parent_id AND user_id = @user_id
+	`
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"parent_id": dirID,
+		"user_id":   userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get query for parent_id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	dirItems, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[dir.Dir])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect rows from table:dirs for parent_id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	return dirItems, nil
+}
+
 func (r *DirRepository) UpdateDirectory(ctx context.Context, userID, dirID uuid.UUID, payload *dir.UpdateDirpayload) (*dir.Dir, error) {
 	stmt := `
 		UPDATE dirs
