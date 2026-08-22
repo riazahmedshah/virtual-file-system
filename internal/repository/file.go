@@ -25,10 +25,10 @@ func NewFileRepository(s *server.Server) *FileRepository {
 func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID uuid.UUID, gcsKey string, payload *file.CreateFilePayload) (*file.File, error) {
 	stmt := `
 		INSERT INTO files (
-			name, dir_id, user_id, gcs_key	
+			name, dir_id, user_id, gcs_key, size, ext	
 		)
 		VALUES (
-			@name, @dir_id, @user_id, @gcs_key
+			@name, @dir_id, @user_id, @gcs_key, @size, @ext
 		)
 		RETURNING *
 	`
@@ -38,6 +38,8 @@ func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID
 		"dir_id":  dirID,
 		"user_id": userID,
 		"gcs_key": gcsKey,
+		"size":    payload.Size,
+		"ext":     payload.Ext,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute create file query for user_id=%s parent_id=%s: %w", userID, dirID, err)
@@ -54,7 +56,7 @@ func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID
 func (r *FileRepository) GetFileByID(ctx context.Context, userID string, fileID string) (*file.File, error) {
 	stmt := `
 		SELECT 
-			id, name, parent_id, user_id, gcs_key, created_at, updated_at
+			id, name, parent_id, user_id, gcs_key, created_at, updated_at, size, ext
 		FROM files
 		WHERE 
 			id = @file_id AND user_id = @user_id
@@ -150,4 +152,21 @@ func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID uuid.UUID, 
 	}
 
 	return fileItems, nil
+}
+
+func (r *FileRepository) GetUserTotalStorageUsed(ctx context.Context, userID uuid.UUID) (int64, error) {
+	stmt := `
+		SELECT COALESCE(SUM(size), 0) AS total_used
+		FROM files
+		WHERE user_id = @user_id
+	`
+	var totalUsed int64
+	err := r.server.DB.Pool.QueryRow(ctx, stmt, pgx.NamedArgs{
+		"user_id": userID,
+	}).Scan(&totalUsed)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total storage used for user_id=%s: %w", userID, err)
+	}
+
+	return totalUsed, nil
 }

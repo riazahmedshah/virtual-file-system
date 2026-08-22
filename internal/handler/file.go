@@ -3,6 +3,8 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,21 +30,49 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 		slog.Error("failed to parse dirId from request params", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid dirId")
 	}
+
 	userID := c.Get("userID").(uuid.UUID)
+	userStorageLimit := c.Get("storageLimit").(int64)
+	userFileSizeLimit := c.Get("fileSizeLimit").(int64)
+	c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, userFileSizeLimit)
+
 	var payload file.CreateFilePayload
 	if err := c.Bind(&payload); err != nil {
 		slog.Error("failed to bind request payload", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		if err.Error() == "http: request body too large" {
+			slog.Error("file size is too large", "error", err)
+			return echo.NewHTTPError(http.StatusRequestEntityTooLarge, "file size exceeds user limit")
+		}
+		slog.Error("failed to get file from form", "error", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "file is required")
+	}
+
+	ext := strings.TrimPrefix(filepath.Ext(fileHeader.Filename), ".")
+	name := strings.TrimSuffix(fileHeader.Filename, filepath.Ext(fileHeader.Filename))
+
+	payload.Name = name
+	payload.Ext = ext
+	payload.Size = fileHeader.Size
+
 	if err := c.Validate(payload); err != nil {
 		slog.Error("failed to validate request payload", "error", err)
 		return err
 	}
 
-	fileHeader, err := c.FormFile("file")
+	// 3. Total storage limit check — user ka existing usage + is new file ka size
+	totalUsed, err := h.fileService.GetUserTotalStorageUsed(c.Request().Context(), userID)
 	if err != nil {
-		slog.Error("failed to get file from form", "error", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "file is required")
+		return err
+	}
+	if totalUsed+fileHeader.Size > userStorageLimit {
+		slog.Error("storage limit exceeded",
+			"userID", userID, "used", totalUsed, "incoming", fileHeader.Size, "limit", userStorageLimit)
+		return echo.NewHTTPError(http.StatusRequestEntityTooLarge, "storage limit exceeded")
 	}
 
 	src, err := fileHeader.Open()

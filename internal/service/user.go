@@ -50,7 +50,7 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 	if err == nil && *existingUser.Email == identity.Email {
-		token, err := utils.GenerateJWT(existingUser.ID, false, 72, s.server.Config.Auth.JwtSecret)
+		token, err := utils.GenerateJWT(existingUser.ID, existingUser.MaxStorageLimit, existingUser.MaxFileLimit, false, 72, s.server.Config.Auth.JwtSecret)
 		if err != nil {
 			return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 		}
@@ -77,7 +77,7 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
-	token, err := utils.GenerateJWT(newUser.ID, false, 72, s.server.Config.Auth.JwtSecret)
+	token, err := utils.GenerateJWT(newUser.ID, newUser.MaxStorageLimit, newUser.MaxFileLimit, false, 72, s.server.Config.Auth.JwtSecret)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
@@ -101,16 +101,17 @@ func (s *UserService) CreateGuestUser(ctx context.Context) (string, error) {
 	userPayload.IsGuest = true
 	userPayload.MaxStorageLimit = &guestMaxStorageLimit
 	userPayload.MaxFileLimit = &guestMaxFileLimit
+
 	newUser, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
-	_, err = s.dirRepo.CreateRootDirectory(ctx, tx, newUser.ID) // TODO
+	_, err = s.dirRepo.CreateRootDirectory(ctx, tx, newUser.ID)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
-	token, err := utils.GenerateJWT(newUser.ID, true, 24*30, s.server.Config.Auth.JwtSecret)
+	token, err := utils.GenerateJWT(newUser.ID, newUser.MaxStorageLimit, newUser.MaxFileLimit, true, 24*30, s.server.Config.Auth.JwtSecret)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}

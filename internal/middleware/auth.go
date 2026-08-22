@@ -40,6 +40,8 @@ func (auth *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 			}
 
 			c.Set("userID", claims.UserID)
+			c.Set("storageLimit", claims.StorageLimit)
+			c.Set("fileSizeLimit", claims.FileSizeLimit)
 			return next(c)
 		}
 	}

@@ -10,5 +10,7 @@ type File struct {
 	Name   string    `json:"name" db:"name"`
 	DirID  uuid.UUID `json:"dirId" db:"dir_id"`
 	UserID uuid.UUID `json:"userId" db:"user_id"`
+	Size   int64     `json:"size" db:"size"`
+	Ext    string    `json:"ext" db:"ext"`
 	GCSKey string    `json:"gcsKey" db:"gcs_key"`
 }

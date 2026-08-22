@@ -17,11 +17,20 @@ func NewCustomValidator() *CustomValidator {
 	v := validator.New()
 
 	v.RegisterTagNameFunc(func(field reflect.StructField) string {
-		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
-		if name == "" {
-			return ""
+		if tag := field.Tag.Get("json"); tag != "" && tag != "-" {
+			name, _, _ := strings.Cut(tag, ",")
+			if name != "" {
+				return name
+			}
 		}
-		return name
+
+		if tag := field.Tag.Get("form"); tag != "" && tag != "-" {
+			name, _, _ := strings.Cut(tag, ",")
+			if name != "" {
+				return name
+			}
+		}
+		return field.Name
 	})
 
 	return &CustomValidator{

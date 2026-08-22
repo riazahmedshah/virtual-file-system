@@ -8,4 +8,10 @@ var (
 		"file not found",
 		nil,
 	)
+
+	ErrMIMETypeMismatch = New(
+		http.StatusBadRequest,
+		"file MIME type does not match the claimed extension",
+		nil,
+	)
 )

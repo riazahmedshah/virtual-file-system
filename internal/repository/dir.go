@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -94,15 +95,30 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 		FROM dirs
 		WHERE id = @dir_id AND user_id = @user_id
 	`
-	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
-		"dir_id":  dirID,
-		"user_id": userID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute get query for id=%s user_id=%s: %w", dirID, userID, err)
+	var dirRows pgx.Rows
+	var size int64
+	var dirRowsErr, sizeErr error
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		dirRows, dirRowsErr = r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+			"dir_id":  dirID,
+			"user_id": userID,
+		})
+	}()
+	go func() {
+		defer wg.Done()
+		size, sizeErr = r.GetDirectorySize(ctx, dirID)
+	}()
+	wg.Wait()
+
+	if dirRowsErr != nil {
+		return nil, fmt.Errorf("failed to execute get query for id=%s user_id=%s: %w", dirID, userID, dirRowsErr)
 	}
 
-	dirItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
+	dirItem, err := pgx.CollectOneRow(dirRows, pgx.RowToStructByName[dir.Dir])
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errs.ErrDirNotFound
@@ -110,7 +126,41 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 		return nil, fmt.Errorf("failed to collect row from table:dirs for id=%s user_id=%s: %w", dirID, userID, err)
 	}
 
+	if sizeErr != nil {
+		return nil, fmt.Errorf("failed to get directory size for id=%s: %w", dirID, sizeErr)
+	}
+	dirItem.Size = size
+
 	return &dirItem, nil
+}
+
+func (r *DirRepository) GetDirectorySize(ctx context.Context, dirID uuid.UUID) (int64, error) {
+	stmt := `
+		WITH RECURSIVE dir_tree AS (
+			SELECT id, 0 AS depth
+			FROM dirs
+			WHERE id = @dir_id
+
+			UNION ALL
+
+			SELECT d.id, dt.depth + 1
+			FROM dirs d
+			INNER JOIN dir_tree dt ON d.parent_id = dt.id
+		)
+		SELECT COALESCE(SUM(f.size), 0) AS total_size
+		FROM files f
+		WHERE f.dir_id IN (SELECT id FROM dir_tree)	
+	`
+	var totalSize int64
+	err := r.server.DB.Pool.QueryRow(ctx, stmt, pgx.NamedArgs{
+		"dir_id": dirID,
+	}).Scan(&totalSize)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute get directory size query for dir_id=%s: %w", dirID, err)
+	}
+
+	return totalSize, nil
 }
 
 func (r *DirRepository) GetChildDirectories(ctx context.Context, userID, dirID uuid.UUID) ([]*dir.Dir, error) {
