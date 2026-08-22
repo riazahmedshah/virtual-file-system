@@ -18,6 +18,11 @@ const (
 	msgCreateUserFailed = "failed to create user"
 )
 
+var (
+	guestMaxStorageLimit int64 = 104857600 // 100 MB
+	guestMaxFileLimit    int64 = 10485760  // 10 MB
+)
+
 type UserService struct {
 	server   *server.Server
 	userRepo *repository.UserRepository
@@ -44,8 +49,8 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
-	if err == nil && existingUser.Email == identity.Email {
-		token, err := utils.GenerateJWT(existingUser.ID, s.server.Config.Auth.JwtSecret)
+	if err == nil && *existingUser.Email == identity.Email {
+		token, err := utils.GenerateJWT(existingUser.ID, false, 72, s.server.Config.Auth.JwtSecret)
 		if err != nil {
 			return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 		}
@@ -61,7 +66,7 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 
 	var userPayload user.CreateUserpayload
 	userPayload.Username = identity.Name
-	userPayload.Email = identity.Email
+	userPayload.Email = &identity.Email
 	userPayload.Image = &identity.Picture
 	newUser, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
 	if err != nil {
@@ -72,7 +77,40 @@ func (s *UserService) CreateUser(ctx context.Context, googleToken string) (strin
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}
 
-	token, err := utils.GenerateJWT(newUser.ID, s.server.Config.Auth.JwtSecret)
+	token, err := utils.GenerateJWT(newUser.ID, false, 72, s.server.Config.Auth.JwtSecret)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	tx.Commit(ctx)
+	return token, nil
+}
+
+func (s *UserService) CreateGuestUser(ctx context.Context) (string, error) {
+	tx, err := s.server.DB.Pool.Begin(ctx)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	var userPayload user.CreateUserpayload
+	userPayload.Username = "Guest"
+	userPayload.Email = nil
+	userPayload.Image = nil
+	userPayload.IsGuest = true
+	userPayload.MaxStorageLimit = &guestMaxStorageLimit
+	userPayload.MaxFileLimit = &guestMaxFileLimit
+	newUser, err := s.userRepo.CreateUser(ctx, tx, &userPayload)
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+	_, err = s.dirRepo.CreateRootDirectory(ctx, tx, newUser.ID) // TODO
+	if err != nil {
+		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
+	}
+
+	token, err := utils.GenerateJWT(newUser.ID, true, 24*30, s.server.Config.Auth.JwtSecret)
 	if err != nil {
 		return "", errs.New(http.StatusInternalServerError, msgCreateUserFailed, err)
 	}

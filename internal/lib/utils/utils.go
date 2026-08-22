@@ -8,11 +8,11 @@ import (
 	jwtoken "github.com/riazahmedshah/vfs/internal/model/jwt"
 )
 
-func GenerateJWT(userID uuid.UUID, JWTSecret string) (string, error) {
+func GenerateJWT(userID uuid.UUID, isGuest bool, expiry int, JWTSecret string) (string, error) {
 	claims := &jwtoken.CustomClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(72 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expiry) * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

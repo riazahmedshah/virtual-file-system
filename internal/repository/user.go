@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/vfs/internal/model/user"
@@ -20,27 +21,46 @@ func NewUserRepository(s *server.Server) *UserRepository {
 }
 
 func (u *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, payload *user.CreateUserpayload) (*user.User, error) {
-	stmt := `
-		INSERT INTO users (
-			username, email, image
-		)
-		VALUES (
-			@username, @email, @image
-		)
-		RETURNING *
-	`
-	rows, err := tx.Query(ctx, stmt, pgx.NamedArgs{
+	columns := []string{"username", "email", "image"}
+	placeholders := []string{"@username", "@email", "@image"}
+	args := pgx.NamedArgs{
 		"username": payload.Username,
 		"email":    payload.Email,
 		"image":    payload.Image,
-	})
+	}
+
+	if payload.IsGuest {
+		columns = append(columns, "is_guest")
+		placeholders = append(placeholders, "true")
+		args["is_guest"] = true
+	}
+
+	if payload.MaxStorageLimit != nil {
+		columns = append(columns, "max_storage_limit")
+		placeholders = append(placeholders, "@max_storage_limit")
+		args["max_storage_limit"] = *payload.MaxStorageLimit
+	}
+
+	if payload.MaxFileLimit != nil {
+		columns = append(columns, "max_file_limit")
+		placeholders = append(placeholders, "@max_file_limit")
+		args["max_file_limit"] = *payload.MaxFileLimit
+	}
+
+	stmt := fmt.Sprintf(`
+		INSERT INTO users (%s)
+		VALUES (%s)
+		RETURNING *
+	`, strings.Join(columns, ", "), strings.Join(placeholders, ", "))
+
+	rows, err := tx.Query(ctx, stmt, args)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute create user query for email=%s: %w", payload.Email, err)
+		return nil, fmt.Errorf("failed to execute create user query for email=%v: %w", payload.Email, err)
 	}
 
 	userItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[user.User])
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect row from table:users for email=%s: %w", payload.Email, err)
+		return nil, fmt.Errorf("failed to collect row from table:users for email=%v: %w", payload.Email, err)
 	}
 
 	return &userItem, err
@@ -49,7 +69,7 @@ func (u *UserRepository) CreateUser(ctx context.Context, tx pgx.Tx, payload *use
 func (u *UserRepository) GetUserByEmail(ctx context.Context, email string) (*user.User, error) {
 	stmt := `
 		SELECT 
-			id, username, email, image
+			id, username, email, image, is_guest, max_storage_limit, max_file_limit, created_at, updated_at
 		FROM users
 		WHERE
 			email=@email
