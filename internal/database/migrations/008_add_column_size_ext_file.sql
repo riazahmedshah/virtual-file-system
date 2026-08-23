@@ -1,6 +1,8 @@
 -- Write your migrate up statements here
 
--- ALTER TABLE dirs ADD COLUMN size BIGINT 
+ALTER TABLE files
+  ADD COLUMN size BIGINT NOT NULL,
+  ADD COLUMN ext TEXT NOT NULL
 
 ---- create above / drop below ----
 

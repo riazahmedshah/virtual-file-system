@@ -94,13 +94,30 @@ func (u *UserRepository) GetUserByEmail(ctx context.Context, email string) (*use
 }
 
 func (u *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*user.ResponseUser, error) {
+	// stmt := `
+	// 	SELECT
+	// 		u.id, u.username, u.email, u.image, u.is_guest, u.max_storage_limit, u.max_file_limit, d.id AS root_dir_id
+	// 	FROM users u
+	// 	JOIN dirs d ON u.id = d.user_id AND d.parent_id IS NULL
+	// 	WHERE
+	// 		u.id=@userID
+	// `
 	stmt := `
 		SELECT 
-			u.id, u.username, u.email, u.image, u.is_guest, u.max_storage_limit, u.max_file_limit, d.id AS root_dir_id
+			u.id, 
+			u.username, 
+			u.email, 
+			u.image, 
+			u.is_guest, 
+			u.max_storage_limit, 
+			u.max_file_limit, 
+			d.id AS root_dir_id,
+			COALESCE((SELECT SUM(size) FROM files WHERE user_id = u.id), 0) AS total_storage_used
 		FROM users u
-		JOIN dirs d ON u.id = d.user_id AND d.parent_id IS NULL
-		WHERE
-			u.id=@userID
+		JOIN dirs d 
+			ON u.id = d.user_id 
+		AND d.parent_id IS NULL
+		WHERE u.id = @userID;
 	`
 	rows, err := u.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
 		"userID": userID,

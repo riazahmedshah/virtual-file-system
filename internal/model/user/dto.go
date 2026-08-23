@@ -16,5 +16,6 @@ type CreateUserpayload struct {
 
 type ResponseUser struct {
 	CreateUserpayload
-	RootDirID uuid.UUID `json:"rootDirId" db:"root_dir_id"`
+	RootDirID        uuid.UUID `json:"rootDirId" db:"root_dir_id"`
+	TotalStorageUsed int64     `json:"totalStorageUsed" db:"total_storage_used"`
 }
