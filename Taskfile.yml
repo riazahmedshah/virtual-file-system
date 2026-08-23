@@ -17,10 +17,15 @@ tasks:
     silent: true
     internal: true
 
-  run: 
+  run:
     desc: run the cmd/app application
     cmds:
-    - go run ./cmd/app
+      - go run ./cmd/app"
+
+  dev: 
+    desc: Run app with hot reload
+    cmds:
+    - air --build.cmd "go build -o ./tmp/main ./cmd/app" --build.bin "./tmp/main"
   
   migrations:new:
     desc: create a new database migration

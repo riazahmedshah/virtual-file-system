@@ -64,7 +64,7 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 		return err
 	}
 
-	// 3. Total storage limit check — user ka existing usage + is new file ka size
+	// Total storage limit check
 	totalUsed, err := h.fileService.GetUserTotalStorageUsed(c.Request().Context(), userID)
 	if err != nil {
 		return err

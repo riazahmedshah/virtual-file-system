@@ -45,7 +45,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 
 	go func() {
-		if err := srv.Start(); err != nil && errors.Is(err, http.ErrServerClosed) {
+		if err := srv.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("failed to start server", "err", err)
 			os.Exit(1)
 		}

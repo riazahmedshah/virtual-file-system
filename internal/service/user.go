@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/riazahmedshah/vfs/internal/errs"
 	"github.com/riazahmedshah/vfs/internal/lib/utils"
@@ -15,7 +16,8 @@ import (
 )
 
 const (
-	msgCreateUserFailed = "failed to create user"
+	msgCreateUserFailed  = "failed to create user"
+	msgGetUserByIDFailed = "failed to get user"
 )
 
 var (
@@ -118,4 +120,16 @@ func (s *UserService) CreateGuestUser(ctx context.Context) (string, error) {
 
 	tx.Commit(ctx)
 	return token, nil
+}
+
+func (s *UserService) GetUserByID(ctx context.Context, userID uuid.UUID) (*user.ResponseUser, error) {
+	userItem, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errs.ErrUserNotFound
+		}
+		return nil, errs.New(http.StatusInternalServerError, msgGetUserByIDFailed, err)
+	}
+
+	return userItem, nil
 }
