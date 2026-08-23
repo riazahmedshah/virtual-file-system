@@ -1,7 +1,7 @@
 package file
 
 type CreateFilePayload struct {
-	Name string `validate:"min=1,max=255,filename"`
+	Name string `validate:"min=1,max=255,alpha"`
 	Ext  string `validate:"required,alphanum,min=1,max=10"`
 	Size int64  `validate:"required"`
 }

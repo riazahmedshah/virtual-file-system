@@ -9,7 +9,7 @@ import (
 func registerDirRoutes(r *echo.Group, h *handler.Handlers, middleware *middleware.AuthMiddleware) {
 	dir := r.Group("/dir")
 	dir.Use(middleware.RequireAuth())
-	dir.GET("/:parentId", h.Dir.GetDirectoryContents)
+	dir.GET("/:dirId", h.Dir.GetDirectoryContents)
 	dir.POST("/:parentId", h.Dir.CreateDirectory)
 	dir.PUT("/:dirId", h.Dir.UpdateDirectory)
 	dir.DELETE("/:dirId", h.Dir.DeleteDirectory)

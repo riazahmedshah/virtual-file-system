@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/riazahmedshah/vfs/internal/lib/utils"
 	"github.com/riazahmedshah/vfs/internal/service"
 )
 
@@ -28,7 +29,7 @@ func (h *UserHandler) GoogleAuth(c echo.Context) error {
 	var payload LoginPayload
 	if err := c.Bind(&payload); err != nil {
 		slog.Error("failed to bind request payload", "error", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
+		return utils.ErrorResponse(c, http.StatusBadRequest, "invalid request payload")
 	}
 
 	if err := c.Validate(payload); err != nil {
@@ -47,22 +48,9 @@ func (h *UserHandler) GoogleAuth(c echo.Context) error {
 	cookie.SameSite = http.SameSiteLaxMode
 	cookie.Path = "/"
 	c.SetCookie(cookie)
-	return c.JSON(http.StatusCreated, map[string]any{
-		"success": true,
-		"message": "User login successful",
-		"data":    nil,
-	})
+	return utils.SuccessResponse(c, http.StatusCreated, "User login successful", nil)
 }
 func (h *UserHandler) GuestAuth(c echo.Context) error {
-	var payload LoginPayload
-	if err := c.Bind(&payload); err != nil {
-		slog.Error("failed to bind request payload", "error", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
-	}
-
-	if err := c.Validate(payload); err != nil {
-		return err
-	}
 	guestToken, err := h.userService.CreateGuestUser(c.Request().Context())
 	if err != nil {
 		return err
@@ -76,11 +64,7 @@ func (h *UserHandler) GuestAuth(c echo.Context) error {
 	cookie.SameSite = http.SameSiteLaxMode
 	cookie.Path = "/"
 	c.SetCookie(cookie)
-	return c.JSON(http.StatusCreated, map[string]any{
-		"success": true,
-		"message": "Guest login successful",
-		"data":    nil,
-	})
+	return utils.SuccessResponse(c, http.StatusCreated, "Guest user created successfully", nil)
 }
 
 func (h *UserHandler) GetUser(c echo.Context) error {
@@ -89,9 +73,5 @@ func (h *UserHandler) GetUser(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, map[string]any{
-		"success": true,
-		"message": "User fetched successfully",
-		"data":    userItem,
-	})
+	return utils.SuccessResponse(c, http.StatusOK, "User retrieved successfully", userItem)
 }

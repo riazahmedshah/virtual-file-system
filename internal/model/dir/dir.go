@@ -10,5 +10,4 @@ type Dir struct {
 	Name     string     `json:"name" db:"name"`
 	UserID   uuid.UUID  `json:"userId" db:"user_id"`
 	ParentID *uuid.UUID `json:"parentId" db:"parent_id"`
-	Size     int64      `json:"size" db:"size"`
 }

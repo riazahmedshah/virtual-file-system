@@ -5,7 +5,7 @@ import (
 )
 
 type CreateDirPayload struct {
-	Name string `json:"name" validate:"required,min=2,max=255"`
+	Name string `json:"name" validate:"required,min=2,max=255,excludesall=/\n\r\t"`
 }
 
 type UpdateDirpayload struct {
@@ -13,7 +13,12 @@ type UpdateDirpayload struct {
 }
 
 type FolderContentResponse struct {
-	*Dir
+	*DirResponse
 	Directories []*Dir       `json:"directories"`
 	Files       []*file.File `json:"files"`
+}
+
+type DirResponse struct {
+	*Dir
+	Size int64 `json:"size" db:"size"`
 }

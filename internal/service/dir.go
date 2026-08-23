@@ -45,7 +45,7 @@ func (s *DirService) CreateDirectory(ctx context.Context, userID uuid.UUID, pare
 }
 
 func (s *DirService) GetDirectoryContent(ctx context.Context, userID uuid.UUID, dirID uuid.UUID) (*dir.FolderContentResponse, error) {
-	var dirData *dir.Dir
+	var dirData *dir.DirResponse
 	var childDirs []*dir.Dir
 	var childFiles []*file.File
 
@@ -90,7 +90,7 @@ func (s *DirService) GetDirectoryContent(ctx context.Context, userID uuid.UUID, 
 	}
 
 	response := &dir.FolderContentResponse{
-		Dir:         dirData,
+		DirResponse: dirData,
 		Directories: childDirs,
 		Files:       childFiles,
 	}

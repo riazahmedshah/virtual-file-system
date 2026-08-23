@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -45,7 +44,7 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 
 			_ = c.JSON(echoErr.Code, map[string]any{
 				"success": false,
-				"error":   fmt.Sprintf("%v", echoErr.Message),
+				"error":   echoErr.Message,
 			})
 			return
 		}

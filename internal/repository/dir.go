@@ -88,7 +88,7 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 	return &dirItem, nil
 }
 
-func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.Dir, error) {
+func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.DirResponse, error) {
 	stmt := `
 		SELECT
 			id, name, parent_id, user_id, created_at, updated_at
@@ -129,9 +129,11 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 	if sizeErr != nil {
 		return nil, fmt.Errorf("failed to get directory size for id=%s: %w", dirID, sizeErr)
 	}
-	dirItem.Size = size
 
-	return &dirItem, nil
+	return &dir.DirResponse{
+		Dir:  &dirItem,
+		Size: size,
+	}, nil
 }
 
 func (r *DirRepository) GetDirectorySize(ctx context.Context, dirID uuid.UUID) (int64, error) {

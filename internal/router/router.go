@@ -21,8 +21,8 @@ func NewRouter(s *server.Server, h *handler.Handlers) *echo.Echo {
 	}))
 
 	authMiddleware := middleware.NewAuthMiddleware(s)
-	router.HTTPErrorHandler = middleware.ErrMiddleware()
 	router.Validator = validation.NewCustomValidator()
+	router.HTTPErrorHandler = middleware.ErrMiddleware()
 
 	v1Group := router.Group("/api/v1")
 	v1.Registerv1Routes(v1Group, h, authMiddleware)
