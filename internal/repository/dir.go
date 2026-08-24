@@ -56,13 +56,13 @@ func (r *DirRepository) CreateRootDirectory(ctx context.Context, tx pgx.Tx, user
 	return &dirItem, nil
 }
 
-func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, parentID uuid.UUID, paylaod *dir.CreateDirPayload) (*dir.Dir, error) {
+func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, parentID uuid.UUID, ancestors []uuid.UUID, paylaod *dir.CreateDirPayload) (*dir.Dir, error) {
 	stmt := `
 		INSERT INTO dirs (
-			name, user_id, parent_id
+			name, user_id, parent_id, ancestors
 		)
 		VALUES (
-			@name, @user_id, @parent_id
+			@name, @user_id, @parent_id, @ancestors
 		)
 		RETURNING *
 	`
@@ -71,6 +71,7 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 		"name":      paylaod.Name,
 		"user_id":   userID,
 		"parent_id": parentID,
+		"ancestors": ancestors,
 	})
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -91,16 +92,17 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.DirResponse, error) {
 	stmt := `
 		SELECT
-			id, name, parent_id, user_id, created_at, updated_at
+			id, name, parent_id, user_id, created_at, updated_at, ancestors
 		FROM dirs
 		WHERE id = @dir_id AND user_id = @user_id
 	`
 	var dirRows pgx.Rows
 	var size int64
-	var dirRowsErr, sizeErr error
+	var breadcrumbs []dir.BreadcrumbItem
+	var dirRowsErr, sizeErr, breadcrumbErr error
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		dirRows, dirRowsErr = r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
@@ -111,6 +113,10 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 	go func() {
 		defer wg.Done()
 		size, sizeErr = r.GetDirectorySize(ctx, dirID)
+	}()
+	go func() {
+		defer wg.Done()
+		breadcrumbs, breadcrumbErr = r.GetDirBreadcrumb(ctx, userID, dirID)
 	}()
 	wg.Wait()
 
@@ -129,13 +135,16 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 	if sizeErr != nil {
 		return nil, fmt.Errorf("failed to get directory size for id=%s: %w", dirID, sizeErr)
 	}
+	if breadcrumbErr != nil {
+		return nil, fmt.Errorf("failed to get breadcrumb for id=%s: %w", dirID, breadcrumbErr)
+	}
 
 	return &dir.DirResponse{
-		Dir:  &dirItem,
-		Size: size,
+		Dir:         &dirItem,
+		Size:        size,
+		Breadcrumbs: breadcrumbs,
 	}, nil
 }
-
 func (r *DirRepository) GetDirectorySize(ctx context.Context, dirID uuid.UUID) (int64, error) {
 	stmt := `
 		WITH RECURSIVE dir_tree AS (
@@ -165,10 +174,39 @@ func (r *DirRepository) GetDirectorySize(ctx context.Context, dirID uuid.UUID) (
 	return totalSize, nil
 }
 
+func (r *DirRepository) GetDirBreadcrumb(ctx context.Context, userID, dirID uuid.UUID) ([]dir.BreadcrumbItem, error) {
+	stmt := `
+		WITH target_ancestors AS (
+    SELECT unnest(ancestors) AS anc_id, generate_subscripts(ancestors, 1) AS ord
+    FROM dirs
+    WHERE id = @dir_id AND user_id = @user_id
+		)
+		SELECT d.id, d.name
+		FROM dirs d
+		JOIN target_ancestors ta ON d.id = ta.anc_id
+		ORDER BY ta.ord
+	`
+
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"dir_id":  dirID,
+		"user_id": userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute breadcrumb query for dir_id=%s: %w", dirID, err)
+	}
+
+	breadcrumbs, err := pgx.CollectRows(rows, pgx.RowToStructByName[dir.BreadcrumbItem])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect breadcrumb rows: %w", err)
+	}
+
+	return breadcrumbs, nil
+}
+
 func (r *DirRepository) GetChildDirectories(ctx context.Context, userID, dirID uuid.UUID) ([]*dir.Dir, error) {
 	stmt := `
 		SELECT
-			id, name, parent_id, user_id, created_at, updated_at
+			id, name, parent_id, user_id, created_at, updated_at, ancestors
 		FROM dirs
 		WHERE parent_id = @parent_id AND user_id = @user_id
 	`
@@ -182,7 +220,7 @@ func (r *DirRepository) GetChildDirectories(ctx context.Context, userID, dirID u
 
 	dirItems, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[dir.Dir])
 	if err != nil {
-		return nil, fmt.Errorf("failed to collect rows from table:dirs for parent_id=%s user_id=%s: %w", dirID, userID, err)
+		return nil, fmt.Errorf("failed to collect childs-rows from table:dirs for parent_id=%s user_id=%s: %w", dirID, userID, err)
 	}
 
 	return dirItems, nil
@@ -240,4 +278,4 @@ func (r *DirRepository) DeleteDirectory(ctx context.Context, userID, dirID uuid.
 	}
 
 	return nil
-}
+} // CAUTION

@@ -53,10 +53,10 @@ func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID
 	return &fileItem, nil
 }
 
-func (r *FileRepository) GetFileByID(ctx context.Context, userID string, fileID string) (*file.File, error) {
+func (r *FileRepository) GetFileByID(ctx context.Context, userID string, fileID uuid.UUID) (*file.File, error) {
 	stmt := `
 		SELECT 
-			id, name, parent_id, user_id, gcs_key, created_at, updated_at, size, ext
+			id, name, dir_id, user_id, gcs_key, created_at, updated_at, size, ext
 		FROM files
 		WHERE 
 			id = @file_id AND user_id = @user_id
@@ -133,7 +133,7 @@ func (r *FileRepository) DeleteFile(ctx context.Context, userID string, fileID s
 func (r *FileRepository) GetFilesByDirID(ctx context.Context, userID uuid.UUID, dirID uuid.UUID) ([]*file.File, error) {
 	stmt := `
 		SELECT
-			id, name, dir_id, user_id, gcs_key, created_at, updated_at
+			id, name, dir_id, user_id, gcs_key, created_at, updated_at, size, ext
 		FROM files
 		WHERE dir_id = @dir_id AND user_id = @user_id
 	`

@@ -34,7 +34,7 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 
 			_ = c.JSON(appErr.Status, map[string]any{
 				"success": false,
-				"error":   appErr.Message,
+				"message": appErr.Message,
 			})
 			return
 		}
@@ -44,7 +44,7 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 
 			_ = c.JSON(echoErr.Code, map[string]any{
 				"success": false,
-				"error":   echoErr.Message,
+				"message": echoErr.Message,
 			})
 			return
 		}
@@ -53,7 +53,7 @@ func ErrMiddleware() echo.HTTPErrorHandler {
 
 		_ = c.JSON(http.StatusInternalServerError, map[string]any{
 			"success": false,
-			"error":   "An unexpected server error occurred. Please try again later.",
+			"message": "An unexpected server error occurred. Please try again later.",
 		})
 	}
 }

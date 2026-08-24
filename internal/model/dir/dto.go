@@ -20,5 +20,6 @@ type FolderContentResponse struct {
 
 type DirResponse struct {
 	*Dir
-	Size int64 `json:"size" db:"size"`
+	Breadcrumbs []BreadcrumbItem `json:"breadcrumbs"`
+	Size        int64            `json:"size" db:"size"`
 }

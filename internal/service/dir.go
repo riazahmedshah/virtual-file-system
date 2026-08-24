@@ -34,7 +34,15 @@ func NewDirService(s *server.Server, dirRepo *repository.DirRepository, fileRepo
 }
 
 func (s *DirService) CreateDirectory(ctx context.Context, userID uuid.UUID, parentID uuid.UUID, payload *dir.CreateDirPayload) (*dir.Dir, error) {
-	directory, err := s.dirRepo.CreateDirectory(ctx, userID, parentID, payload)
+	parent, err := s.dirRepo.GetDirectoryById(ctx, userID, parentID)
+	if err != nil {
+		if errors.Is(err, errs.ErrDirNotFound) {
+			return nil, err
+		}
+		return nil, errs.New(http.StatusInternalServerError, msgCreateDirFailed, err)
+	}
+	ancestors := append(append([]uuid.UUID{}, parent.Ancestors...), parent.ID)
+	directory, err := s.dirRepo.CreateDirectory(ctx, userID, parentID, ancestors, payload)
 	if err != nil {
 		if errors.Is(err, errs.ErrConflictDirName) {
 			return nil, err

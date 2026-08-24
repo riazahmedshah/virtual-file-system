@@ -39,11 +39,10 @@ func NewFileService(s *server.Server, fileRepo *repository.FileRepository, clien
 }
 
 func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, dirID uuid.UUID, src multipart.File, payload *file.CreateFilePayload) (*file.File, error) {
-	detectedType, err := utils.DetectAndValidateExt(src, payload.Ext)
+	_, err := utils.DetectAndValidateExt(src, payload.Ext)
 	if err != nil {
 		return nil, errs.ErrMIMETypeMismatch
 	}
-	payload.Ext = detectedType
 	randSuffix := uuid.Must(uuid.NewV7())
 	objName := fmt.Sprintf("%s/%s-%s", userID, randSuffix, payload.Name)
 
@@ -63,7 +62,7 @@ func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, dirID uu
 }
 
 func (s *FileService) DeleteFile(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) error {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
 	if err != nil {
 		return errs.New(http.StatusInternalServerError, msgDeleteFileFailed, err)
 	}
@@ -80,7 +79,7 @@ func (s *FileService) DeleteFile(ctx context.Context, userID uuid.UUID, fileID u
 }
 
 func (s *FileService) GetFileDetailsByID(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) (*file.File, error) {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
 	if err != nil {
 		return nil, errs.New(http.StatusInternalServerError, "failed to get file details", err)
 	}
@@ -89,7 +88,7 @@ func (s *FileService) GetFileDetailsByID(ctx context.Context, userID uuid.UUID, 
 }
 
 func (s *FileService) GenerateSignedURL(ctx context.Context, userID uuid.UUID, fileID uuid.UUID, disposition gcs.Disposition, expiry time.Duration) (string, error) {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID.String())
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
 	if err != nil {
 		if errors.Is(err, errs.ErrFileNotFound) {
 			return "", err

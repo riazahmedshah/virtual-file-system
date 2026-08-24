@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/riazahmedshah/vfs/internal/lib/gcs"
+	"github.com/riazahmedshah/vfs/internal/lib/utils"
 	"github.com/riazahmedshah/vfs/internal/model/file"
 	"github.com/riazahmedshah/vfs/internal/service"
 )
@@ -38,6 +41,11 @@ func (h *FileHandler) UploadAndCreateFile(c echo.Context) error {
 
 	var payload file.CreateFilePayload
 	if err := c.Bind(&payload); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			slog.Warn("request body exceeded size limit", "limit", userFileSizeLimit, "error", err)
+			return utils.ErrorResponse(c, http.StatusRequestEntityTooLarge, fmt.Sprintf("request body exceeds, allowed size: %d MB", userFileSizeLimit/(1024*1024)))
+		}
 		slog.Error("failed to bind request payload", "error", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
 	}
@@ -100,7 +108,7 @@ func (h *FileHandler) DeleteFile(c echo.Context) error {
 	if err := h.fileService.DeleteFile(c.Request().Context(), userID, fileID); err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, map[string]string{"message": "file deleted successfully"})
+	return utils.SuccessResponse(c, http.StatusOK, "file deleted successfully", nil)
 }
 
 func (h *FileHandler) Serve(c echo.Context) error {
