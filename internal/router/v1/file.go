@@ -11,4 +11,5 @@ func registerFileRoutes(r *echo.Group, h *handler.Handlers, middleware *middlewa
 	file.Use(middleware.RequireAuth())
 	file.POST("/upload/:dirId", h.File.UploadAndCreateFile)
 	file.GET("/:fileId", h.File.Serve) // /file/:fileId?disposition=inline|attachment
+	file.DELETE("/:fileId", h.File.DeleteFile)
 }

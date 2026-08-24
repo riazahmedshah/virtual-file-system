@@ -20,7 +20,7 @@ tasks:
   run:
     desc: run the cmd/app application
     cmds:
-      - go run ./cmd/app"
+      - go run ./cmd/app
 
   dev: 
     desc: Run app with hot reload

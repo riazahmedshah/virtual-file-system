@@ -17,3 +17,8 @@ type BreadcrumbItem struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
+
+type FileKeyItem struct {
+	ID     uuid.UUID `json:"id" db:"id"`
+	GCSKey string    `json:"gcsKey" db:"gcs_key"`
+}

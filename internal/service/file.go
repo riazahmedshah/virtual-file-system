@@ -61,8 +61,8 @@ func (s *FileService) UploadFile(ctx context.Context, userID uuid.UUID, dirID uu
 	return fileItem, nil
 }
 
-func (s *FileService) DeleteFile(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) error {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
+func (s *FileService) DeleteFile(ctx context.Context, userID, fileID uuid.UUID) error {
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID, fileID)
 	if err != nil {
 		return errs.New(http.StatusInternalServerError, msgDeleteFileFailed, err)
 	}
@@ -79,7 +79,7 @@ func (s *FileService) DeleteFile(ctx context.Context, userID uuid.UUID, fileID u
 }
 
 func (s *FileService) GetFileDetailsByID(ctx context.Context, userID uuid.UUID, fileID uuid.UUID) (*file.File, error) {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID, fileID)
 	if err != nil {
 		return nil, errs.New(http.StatusInternalServerError, "failed to get file details", err)
 	}
@@ -88,7 +88,7 @@ func (s *FileService) GetFileDetailsByID(ctx context.Context, userID uuid.UUID, 
 }
 
 func (s *FileService) GenerateSignedURL(ctx context.Context, userID uuid.UUID, fileID uuid.UUID, disposition gcs.Disposition, expiry time.Duration) (string, error) {
-	fileItem, err := s.fileRepo.GetFileByID(ctx, userID.String(), fileID)
+	fileItem, err := s.fileRepo.GetFileByID(ctx, userID, fileID)
 	if err != nil {
 		if errors.Is(err, errs.ErrFileNotFound) {
 			return "", err

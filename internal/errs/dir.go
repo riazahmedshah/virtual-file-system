@@ -26,4 +26,10 @@ var (
 		"directory not found or you do not have permission to access it",
 		nil,
 	)
+
+	ErrRootDirDelete = New(
+		http.StatusBadRequest,
+		"cannot delete root directory",
+		nil,
+	)
 )

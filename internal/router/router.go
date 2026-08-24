@@ -15,7 +15,7 @@ func NewRouter(s *server.Server, h *handler.Handlers) *echo.Echo {
 
 	router.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{echo.GET, echo.POST, echo.PATCH, echo.PUT, echo.OPTIONS},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.PATCH, echo.PUT, echo.DELETE, echo.OPTIONS},
 		AllowHeaders:     []string{echo.HeaderContentType, echo.HeaderAuthorization},
 		AllowCredentials: true,
 	}))

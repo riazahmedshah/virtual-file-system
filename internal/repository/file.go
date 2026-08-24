@@ -53,7 +53,7 @@ func (r *FileRepository) CreateFile(ctx context.Context, userID uuid.UUID, dirID
 	return &fileItem, nil
 }
 
-func (r *FileRepository) GetFileByID(ctx context.Context, userID string, fileID uuid.UUID) (*file.File, error) {
+func (r *FileRepository) GetFileByID(ctx context.Context, userID, fileID uuid.UUID) (*file.File, error) {
 	stmt := `
 		SELECT 
 			id, name, dir_id, user_id, gcs_key, created_at, updated_at, size, ext

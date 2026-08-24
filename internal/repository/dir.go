@@ -89,7 +89,7 @@ func (r *DirRepository) CreateDirectory(ctx context.Context, userID uuid.UUID, p
 	return &dirItem, nil
 }
 
-func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.DirResponse, error) {
+func (r *DirRepository) GetDirectoryWithMetadata(ctx context.Context, userID, dirID uuid.UUID) (*dir.DirResponse, error) {
 	stmt := `
 		SELECT
 			id, name, parent_id, user_id, created_at, updated_at, ancestors
@@ -145,6 +145,33 @@ func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid
 		Breadcrumbs: breadcrumbs,
 	}, nil
 }
+
+func (r *DirRepository) GetDirectoryById(ctx context.Context, userID, dirID uuid.UUID) (*dir.Dir, error) {
+	stmt := `
+		SELECT
+			id, name, parent_id, user_id, created_at, updated_at, ancestors
+		FROM dirs
+		WHERE id = @dir_id AND user_id = @user_id
+	`
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"dir_id":  dirID,
+		"user_id": userID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get query for id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	dirItem, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[dir.Dir])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errs.ErrDirNotFound
+		}
+		return nil, fmt.Errorf("failed to collect row from table:dirs for id=%s user_id=%s: %w", dirID, userID, err)
+	}
+
+	return &dirItem, nil
+}
+
 func (r *DirRepository) GetDirectorySize(ctx context.Context, dirID uuid.UUID) (int64, error) {
 	stmt := `
 		WITH RECURSIVE dir_tree AS (
@@ -279,3 +306,36 @@ func (r *DirRepository) DeleteDirectory(ctx context.Context, userID, dirID uuid.
 
 	return nil
 } // CAUTION
+
+func (r *DirRepository) GetAllFileKeysInDir(ctx context.Context, dirID uuid.UUID) ([]dir.FileKeyItem, error) {
+	stmt := `
+		WITH RECURSIVE dir_tree AS (
+			SELECT id
+			FROM dirs
+			WHERE id = @dir_id
+
+			UNION ALL
+
+			SELECT d.id
+			FROM dirs d
+			INNER JOIN dir_tree dt ON d.parent_id = dt.id
+		)
+		SELECT f.id, f.gcs_key
+		FROM files f
+		WHERE f.dir_id IN (SELECT id FROM dir_tree)
+	`
+
+	rows, err := r.server.DB.Pool.Query(ctx, stmt, pgx.NamedArgs{
+		"dir_id": dirID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get file keys query for dir_id=%s: %w", dirID, err)
+	}
+
+	fileKeys, err := pgx.CollectRows(rows, pgx.RowToStructByName[dir.FileKeyItem])
+	if err != nil {
+		return nil, fmt.Errorf("failed to collect file key rows for dir_id=%s: %w", dirID, err)
+	}
+
+	return fileKeys, nil
+}

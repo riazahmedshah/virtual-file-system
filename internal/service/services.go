@@ -23,7 +23,7 @@ func NewServices(s *server.Server, r *repository.Repositories) (*Services, error
 	googleVarifier := google.NewVerifier(s.Config)
 	return &Services{
 		User: NewUserService(s, r.User, r.Dir, googleVarifier),
-		Dir:  NewDirService(s, r.Dir, r.File),
+		Dir:  NewDirService(s, r.Dir, r.File, gcsClient),
 		File: NewFileService(s, r.File, gcsClient),
 	}, nil
 }
