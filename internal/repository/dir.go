@@ -305,7 +305,7 @@ func (r *DirRepository) DeleteDirectory(ctx context.Context, userID, dirID uuid.
 	}
 
 	return nil
-} // CAUTION
+}
 
 func (r *DirRepository) GetAllFileKeysInDir(ctx context.Context, dirID uuid.UUID) ([]dir.FileKeyItem, error) {
 	stmt := `
